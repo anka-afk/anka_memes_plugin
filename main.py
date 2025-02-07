@@ -9,7 +9,7 @@ from astrbot.api.message_components import *
 from openai.types.chat.chat_completion import ChatCompletion
 from astrbot.api.all import *
 
-@register("mccloud_meme_sender", "MC云-小馒头", "识别AI回复中的表情并发送对应表情包", "1.0.0")
+@register("mccloud_meme_sender", "MC云-小馒头", "识别AI回复中的表情并发送对应表情包", "1.0")
 class MemeSender(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
