@@ -1,5 +1,11 @@
 # 更多表情包(自定义)的表情插件
 
+基于 mccloud_meme_sender 修改
+
+原项目作者：MC 云-小馒头
+
+原项目地址：https://github.com/MCYUNIDC/mccloud_meme_sender
+
 自用表情包, 修改 prompt, 以及代码细节
 
 增加内容:
