@@ -9,6 +9,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import LLMResponse
 from astrbot.api.message_components import *
+from astrbot.api.event.filter import EventMessageType
 from openai.types.chat.chat_completion import ChatCompletion
 from astrbot.api.all import *
 
@@ -78,7 +79,7 @@ class MemeSender(Star):
         }
         yield event.plain_result(f"请于30秒内发送要添加到【{category}】类别的图片（支持多图）")
 
-    @filter.on_message()
+    @filter.event_message_type(filter.EventMessageType.ALL) 
     async def handle_upload_image(self, event: AstrMessageEvent):
         """处理图片上传"""
         user_key = f"{event.session_id}_{event.get_sender_id()}"
