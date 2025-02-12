@@ -131,7 +131,7 @@ class MemeSender(Star):
                             async with session.get(img.url) as resp:
                                 content = await resp.read()
                     
-                    # ========== 文件类型检测逻辑 ==========
+                    # ========== 新增文件类型检测逻辑 ==========
                     file_type = imghdr.what(None, h=content)
                     if not file_type:
                         try:
@@ -154,7 +154,7 @@ class MemeSender(Star):
                     # 生成带扩展名的文件名
                     filename = f"{timestamp}_{idx}{ext}"
                     save_path = os.path.join(save_dir, filename)
-                    # ========== 结束逻辑 ==========
+                    # ========== 结束新增逻辑 ==========
                     
                     with open(save_path, "wb") as f:
                         f.write(content)
@@ -173,6 +173,7 @@ class MemeSender(Star):
         except Exception as e:
             self.logger.error(f"保存图片失败: {str(e)}")
             yield event.plain_result(f"保存失败：{str(e)}")
+
     async def reload_emotions(self):
         """动态加载表情配置"""
         config_path = os.path.join(self.meme_path, "emotions.json")
