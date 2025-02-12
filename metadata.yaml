@@ -1,11 +1,11 @@
 name: meme_manager
-desc: 表情包管家 - 支持自动发送及用户上传管理
+desc: anka - 表情包管理器 - 支持表情包发送及表情包上传
 help: |
   功能包含：
   1. AI自动发送表情包（识别[表情]、(表情)符号）
   2. /查看表情包 - 列出所有可用表情类别
   3. /上传表情包 [类别] - 添加新表情到指定分类
-  4. 支持JPG/PNG/GIF格式
+  4. 支持JPG/PNG/GIF等图片格式
 version: v2.0
 author: anka
 repo: https://github.com/anka-afk/astrbot_plugin_meme_manager

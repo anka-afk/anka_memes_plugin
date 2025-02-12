@@ -17,7 +17,7 @@ from astrbot.api.event.filter import EventMessageType
 from openai.types.chat.chat_completion import ChatCompletion
 from astrbot.api.all import *
 
-@register("meme_manager", "anka", "表情包管家 - 支持自动发送及用户上传管理", "2.0")
+@register("meme_manager", "anka", "anka - 表情包管理器 - 支持表情包发送及表情包上传", "2.0")
 class MemeSender(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
