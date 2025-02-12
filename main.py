@@ -4,7 +4,9 @@ import random
 import logging
 import json
 import time
-
+import aiohttp
+import aiofiles
+import traceback
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import LLMResponse
@@ -13,7 +15,7 @@ from astrbot.api.event.filter import EventMessageType
 from openai.types.chat.chat_completion import ChatCompletion
 from astrbot.api.all import *
 
-@register("mccloud_meme_sender", "MC云-小馒头", "识别AI回复中的表情并发送对应表情包", "1.0")
+
 class MemeSender(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
@@ -79,66 +81,181 @@ class MemeSender(Star):
         }
         yield event.plain_result(f"请于30秒内发送要添加到【{category}】类别的图片（支持多图）")
 
-    @filter.event_message_type(filter.EventMessageType.ALL) 
+import os
+import time
+import random
+import logging
+import aiohttp
+import aiofiles
+import traceback
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.message_components import Image
+from astrbot.api.event.filter import EventMessageType
+
+@register("mccloud_meme_sender", "MC云-小馒头", "识别AI回复中的表情并发送对应表情包", "1.0")
+class MemeSender(Star):
+    def init(self, context: Context, config: dict = None):
+        super().init(context)
+        self.config = config or {}
+        self.found_emotions = []  # 存储找到的表情
+        self.upload_states = {}   # 存储上传状态：{user_session: {"category": str, "expire_time": float}}
+    
+        # 获取当前文件所在目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.meme_path = os.path.join(current_dir, "memes")
+    
+        self.emotion_map = {
+            "生气": "angry",
+            "开心": "happy",
+            "悲伤": "sad",
+            "惊讶": "surprised",
+            "疑惑": "confused",
+            "色色": "color",
+            "色": "color",
+            "死机": "cpu",
+            "笨蛋": "fool",
+            "给钱": "givemoney",
+            "喜欢": "like",
+            "看": "see",
+            "害羞": "shy",
+            "下班": "work",
+            "剪刀": "scissors",
+            "不回我": "reply",
+            "喵": "meow",
+            "八嘎": "baka",
+            "早": "morning",
+            "睡觉": "sleep",
+            "唉": "sigh",
+        }
+    
+        # 设置日志（强制设置级别为DEBUG）
+        logging.basicConfig(level=logging.DEBUG)
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+    
+        # 检查表情包目录
+        self._check_meme_directories()
+
+    def _get_extension_from_content_type(self, content_type: str) -> str:
+        mapping = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp'
+        }
+        return mapping.get(content_type, '.jpg')
+
+    # ... 其余代码 ...
+
+    @filter.event_message_type(EventMessageType.ALL)
     async def handle_upload_image(self, event: AstrMessageEvent):
-        """处理图片上传"""
+        """处理图片上传并输出详细调试信息"""
         user_key = f"{event.session_id}_{event.get_sender_id()}"
-        state = self.upload_states.get(user_key)
-        
-        if not state or time.time() > state["expire_time"]:
-            if state:
-                del self.upload_states[user_key]
+        self.logger.info(f"[handle_upload_image] 用户 key: {user_key}")
+
+        # 如果该用户没有处于上传状态，则直接返回
+        if user_key not in self.upload_states:
+            self.logger.info(f"[handle_upload_image] 用户 {user_key} 未处于上传状态，忽略此消息。")
             return
 
-        # 获取消息中的图片
-        images = [c for c in event.message_obj.message if isinstance(c, Image)]
+        # 检查上传状态是否过期
+        if time.time() > self.upload_states[user_key]["expire_time"]:
+            self.logger.info(f"[handle_upload_image] 用户 {user_key} 的上传状态已过期。")
+            del self.upload_states[user_key]
+            yield event.plain_result("上传超时，请重新上传表情包。")
+            return
+
+        # 输出完整的消息链调试信息
+        self.logger.info(f"[handle_upload_image] 完整的消息链: {event.message_obj.message}")
+        images = []
+        for i, comp in enumerate(event.message_obj.message):
+            comp_type = type(comp)
+            self.logger.info(f"[handle_upload_image] 消息组件 {i}: 类型: {comp_type}, 内容: {repr(comp)}")
+            # 如果组件是 Image 类型，或者含有 file 属性，则认为是图片组件
+            if isinstance(comp, Image):
+                images.append(comp)
+            elif hasattr(comp, "file"):
+                self.logger.info(f"[handle_upload_image] 组件 {i} 有 file 属性: {comp.file}")
+                images.append(comp)
+            else:
+                self.logger.info(f"[handle_upload_image] 组件 {i} 未匹配为图片组件。")
+
+        self.logger.info(f"[handle_upload_image] 从消息中检测到 {len(images)} 个图片组件。")
         if not images:
-            yield event.plain_result("未检测到图片，请重新发送指令")
+            self.logger.info(f"[handle_upload_image] 消息中未检测到图片组件。")
             return
 
-        # 处理图片保存
-        category = state["category"]
-        saved_count = 0
-        target_dir = os.path.join(self.meme_path, self.emotion_map[category])
-        os.makedirs(target_dir, exist_ok=True)
+        # 从上传状态中获取用户指定的类别（upload_meme 指令中已校验类别合法性）
+        category = self.upload_states[user_key]["category"]
+        self.logger.info(f"[handle_upload_image] 用户 {user_key} 正在上传类别: {category}")
+        category_en = self.emotion_map.get(category)
+        if not category_en:
+            self.logger.error(f"[handle_upload_image] 未知的表情包类别: {category}")
+            yield event.plain_result("上传失败：未知的表情包类别。")
+            del self.upload_states[user_key]
+            return
 
-        for img in images:
-            try:
-                # 处理不同来源的图片
-                if img.path and os.path.exists(img.path):  # 本地图片
-                    filename = f"{int(time.time())}_{os.path.basename(img.path)}"
-                    dest = os.path.join(target_dir, filename)
-                    shutil.copy(img.path, dest)
-                    saved_count += 1
-                elif img.url:  # 网络图片
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(img.url) as resp:
-                            if resp.status == 200:
-                                ext = os.path.splitext(img.url)[1] or ".jpg"
-                                filename = f"{int(time.time())}_{len(os.listdir(target_dir))}{ext}"
-                                dest = os.path.join(target_dir, filename)
-                                
-                                with open(dest, "wb") as f:
-                                    while True:
-                                        chunk = await resp.content.read(1024)
-                                        if not chunk:
-                                            break
-                                        f.write(chunk)
-                                saved_count += 1
-                            else:
-                                self.logger.error(f"下载图片失败：{resp.status}")
-                else:
-                    self.logger.warning("无法识别的图片格式")
-            except Exception as e:
-                self.logger.error(f"保存图片失败：{str(e)}")
-                continue
+        # 构造存储图片的目录（不存在则自动创建）
+        save_dir = os.path.join(self.meme_path, category_en)
+        if not os.path.exists(save_dir):
+            self.logger.info(f"[handle_upload_image] 目录 {save_dir} 不存在，尝试创建。")
+            os.makedirs(save_dir, exist_ok=True)
+        else:
+            self.logger.info(f"[handle_upload_image] 目录 {save_dir} 已存在。")
 
-        # 清理状态并返回结果
+        uploaded_count = 0
+        async with aiohttp.ClientSession() as session:
+            for img in images:
+                image_url = getattr(img, "file", None)
+                self.logger.info(f"[handle_upload_image] 尝试下载图片: {image_url}")
+                if not image_url:
+                    self.logger.error(f"[handle_upload_image] 图片组件中未找到有效的 file 属性: {img}")
+                    continue
+                try:
+                    async with session.get(image_url) as resp:
+                        self.logger.info(f"[handle_upload_image] 收到响应, 状态码: {resp.status}, 响应头: {resp.headers}")
+                        if resp.status != 200:
+                            self.logger.error(f"[handle_upload_image] 下载图片失败: {image_url} 状态码: {resp.status}")
+                            continue
+                        content = await resp.read()
+                        self.logger.info(f"[handle_upload_image] 下载成功，图片大小: {len(content)} 字节")
+                        content_type = resp.headers.get("Content-Type", "")
+                        extension = self._get_extension_from_content_type(content_type)
+                        self.logger.info(f"[handle_upload_image] Content-Type: {content_type}，解析得到扩展名: {extension}")
+                        filename = f"{int(time.time())}_{random.randint(1000,9999)}{extension}"
+                        file_path = os.path.join(save_dir, filename)
+                        self.logger.info(f"[handle_upload_image] 保存文件路径: {file_path}")
+                        async with aiofiles.open(file_path, "wb") as f:
+                            await f.write(content)
+                        self.logger.info(f"[handle_upload_image] 成功保存图片至 {file_path}")
+                        uploaded_count += 1
+                except Exception as e:
+                    self.logger.error(f"[handle_upload_image] 下载图片时发生异常: {str(e)}")
+                    self.logger.error(traceback.format_exc())
+
+        if uploaded_count:
+            self.logger.info(f"[handle_upload_image] 用户 {user_key} 上传了 {uploaded_count} 张图片。")
+            yield event.plain_result(f"成功上传 {uploaded_count} 张图片到【{category}】类别。")
+        else:
+            self.logger.warning(f"[handle_upload_image] 用户 {user_key} 未能上传任何图片。")
+            yield event.plain_result("未能上传任何图片，请检查图片链接是否有效。")
+
         del self.upload_states[user_key]
-        result_msg = f"成功保存 {saved_count}/{len(images)} 张图片到【{category}】类别"
-        if saved_count < len(images):
-            result_msg += "\n部分图片保存失败，请检查格式（支持jpg/png/gif）"
-        yield event.plain_result(result_msg)
+        self.logger.info(f"[handle_upload_image] 清除用户 {user_key} 的上传状态。")
+
+
+
+
+    def _get_extension_from_content_type(self, content_type: str) -> str:
+        """根据 Content-Type 获取文件扩展名"""
+        mapping = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp'
+        }
+        return mapping.get(content_type, '.jpg')
+
 
     async def reload_emotions(self):
         """动态加载表情配置"""
