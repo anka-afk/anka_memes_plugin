@@ -1,3 +1,4 @@
+import asyncio
 import re
 import os
 import io
@@ -14,8 +15,9 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import LLMResponse
 from astrbot.api.message_components import *
 from astrbot.api.event.filter import EventMessageType
-from openai.types.chat.chat_completion import ChatCompletion
+from astrbot.core.message.components import Plain
 from astrbot.api.all import *
+from astrbot.core.message.message_event_result import MessageChain
 
 @register("meme_manager", "anka", "anka - 表情包管理器 - 支持表情包发送及表情包上传", "2.0")
 class MemeSender(Star):
@@ -24,7 +26,7 @@ class MemeSender(Star):
         self.config = config or {}
         self.found_emotions = []  # 存储找到的表情
         self.upload_states = {}  # 存储上传状态：{user_session: {"category": str, "expire_time": float}}
-
+        self.pending_images = {}  # 字典, 存储待发送的图片
         # 获取当前文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.meme_path = os.path.join(current_dir, "memes")
@@ -131,7 +133,6 @@ class MemeSender(Star):
                             async with session.get(img.url) as resp:
                                 content = await resp.read()
                     
-                    # ========== 新增文件类型检测逻辑 ==========
                     file_type = imghdr.what(None, h=content)
                     if not file_type:
                         try:
@@ -154,7 +155,6 @@ class MemeSender(Star):
                     # 生成带扩展名的文件名
                     filename = f"{timestamp}_{idx}{ext}"
                     save_path = os.path.join(save_dir, filename)
-                    # ========== 结束新增逻辑 ==========
                     
                     with open(save_path, "wb") as f:
                         f.write(content)
@@ -236,7 +236,7 @@ class MemeSender(Star):
 
     @filter.on_decorating_result()
     async def on_decorating_result(self, event: AstrMessageEvent):
-        """在消息发送前处理表情"""
+        """在消息发送前处理文本部分"""
         if not self.found_emotions:
             return
 
@@ -245,61 +245,61 @@ class MemeSender(Star):
             return
 
         try:
-            # 创建新的消息链
             chains = []
-
-            # 添加原始文本消息链
             original_chain = result.chain
+            
             if original_chain:
                 if isinstance(original_chain, str):
                     chains.append(Plain(original_chain))
                 elif isinstance(original_chain, MessageChain):
-                    chains.extend(original_chain)
+                    chains.extend([c for c in original_chain if isinstance(c, Plain)])
                 elif isinstance(original_chain, list):
-                    chains.extend(original_chain)
-                else:
-                    self.logger.warning(f"未知的消息链类型: {type(original_chain)}")
+                    chains.extend([c for c in original_chain if isinstance(c, Plain)])
+            
+            text_result = event.make_result()
+            for component in chains:
+                if isinstance(component, Plain):
+                    text_result = text_result.message(component.text)
+            
+            event.set_result(text_result)
 
-            # 添加表情包
+        except Exception as e:
+            self.logger.error(f"处理文本失败: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+
+    @filter.after_message_sent()
+    async def after_message_sent(self, event: AstrMessageEvent):
+        """消息发送后处理图片部分"""
+        if not self.found_emotions:
+            return
+
+        try:
             for emotion in self.found_emotions:
                 emotion_en = self.emotion_map.get(emotion)
                 if not emotion_en:
                     continue
 
                 emotion_path = os.path.join(self.meme_path, emotion_en)
-                if os.path.exists(emotion_path):
-                    memes = [f for f in os.listdir(emotion_path) if f.endswith(('.jpg', '.png', '.gif'))]
-                    try:
-                        meme = random.choice(memes)
-                    except IndexError:
-                        self.logger.warning(f"表情目录为空: {emotion_path}")
-                        continue
+                if not os.path.exists(emotion_path):
+                    continue
 
-                    meme_file = os.path.join(emotion_path, meme)
+                memes = [f for f in os.listdir(emotion_path) if f.endswith(('.jpg', '.png', '.gif'))]
+                if not memes:
+                    continue
 
-                    # 使用正确的方式添加图片到消息链
-                    chains.append(Image.fromFileSystem(meme_file))
-
-            # 使用 make_result() 构建结果
-            result = event.make_result()
-            for component in chains:
-                if isinstance(component, Plain):
-                    result = result.message(component.text)
-                elif isinstance(component, Image):
-                    result = result.file_image(component.path)
-
-            # 设置结果
-            event.set_result(result)
-
+                meme = random.choice(memes)
+                meme_file = os.path.join(emotion_path, meme)
+                
+                await self.context.send_message(
+                    event.unified_msg_origin,
+                    MessageChain([Image.fromFileSystem(meme_file)])
+                )
+            self.found_emotions = []
+            
         except Exception as e:
-            self.logger.error(f"处理表情失败: {str(e)}")
+            self.logger.error(f"发送表情图片失败: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
-
-        # 清空表情列表
-        self.found_emotions = []
-
-    @filter.after_message_sent()
-    async def after_message_sent(self, event: AstrMessageEvent):
-        """消息发送后的清理工作"""
-        self.found_emotions = []  # 确保清空表情列表
+        finally:
+            self.found_emotions = []
