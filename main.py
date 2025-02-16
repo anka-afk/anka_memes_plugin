@@ -15,6 +15,7 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.provider import LLMResponse
 from astrbot.api.message_components import *
 from astrbot.api.event.filter import EventMessageType
+from astrbot.api.event import ResultContentType
 from astrbot.core.message.components import Plain
 from astrbot.api.all import *
 from astrbot.core.message.message_event_result import MessageChain
@@ -256,7 +257,7 @@ class MemeSender(Star):
                 elif isinstance(original_chain, list):
                     chains.extend([c for c in original_chain if isinstance(c, Plain)])
             
-            text_result = event.make_result()
+            text_result = event.make_result().set_result_content_type(ResultContentType.LLM_RESULT)
             for component in chains:
                 if isinstance(component, Plain):
                     text_result = text_result.message(component.text)
