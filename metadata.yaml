@@ -6,6 +6,6 @@ help: |
   2. /查看表情包 - 列出所有可用表情类别
   3. /上传表情包 [类别] - 添加新表情到指定分类
   4. 支持JPG/PNG/GIF等图片格式
-version: v2.1
+version: v2.2
 author: anka
 repo: https://github.com/anka-afk/astrbot_plugin_meme_manager
