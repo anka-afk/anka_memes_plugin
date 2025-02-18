@@ -11,7 +11,7 @@ import os
 import shutil
 from ..image_host.stardots_host import StarDotsImageHost
 
-# 创建图床对象，这里你可以动态选择使用哪个图床
+# 创建图床对象，这里可以动态选择使用哪个图床
 image_host = StarDotsImageHost()  # 选择 StarDots 图床实现
 
 api = Blueprint("api", __name__)

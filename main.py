@@ -81,12 +81,12 @@ class MemeSender(Star):
         # 用于保存服务器进程对象
         self.server_process = None
 
-    @filter.command("启动服务器")
+    @filter.command("启动表情包管理服务器")
     async def start_server_command(self, event: AstrMessageEvent):
         """
-        启动服务器的指令，返回访问地址和当前秘钥
+        启动表情包管理服务器的指令，返回访问地址和当前秘钥
         """
-        yield event.plain_result("服务器启动中，请稍候……")
+        yield event.plain_result("表情包管理服务器启动中，请稍候……")
         # 传入配置到 webui 中，启动服务器并获取秘钥和进程对象
         secret_key, process = start_server(self.config)
         self.server_process = process
@@ -96,22 +96,22 @@ class MemeSender(Star):
         public_ip = get_public_ip()
         webui_url = f"http://{public_ip}:{port}/"  # 使用公网 IP 构造访问地址
         yield event.plain_result(
-            f"服务器已启动！请访问 {webui_url} ，登录秘钥为：{secret_key}"
+            f"表情包管理服务器已启动！请访问 {webui_url} ，登录秘钥为：{secret_key}"
         )
 
-    @filter.command("关闭服务器")
+    @filter.command("关闭表情包管理服务器")
     async def stop_server(self, event: AstrMessageEvent):
         """
-        关闭服务器的指令
+        关闭表情包管理服务器的指令
         """
         if not self.server_process:
-            yield event.plain_result("服务器未启动或已关闭。")
+            yield event.plain_result("表情包管理服务器未启动或已关闭。")
             return
 
-        yield event.plain_result("正在关闭服务器……")
+        yield event.plain_result("正在关闭表情包管理服务器……")
         shutdown_server(self.server_process)
         self.server_process = None
-        yield event.plain_result("服务器已关闭！")
+        yield event.plain_result("表情包管理服务器已关闭！")
 
     @filter.command("查看表情包")
     async def list_emotions(self, event: AstrMessageEvent):

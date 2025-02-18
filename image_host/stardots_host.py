@@ -9,8 +9,8 @@ from .image_host import ImageHost
 
 class StarDotsImageHost(ImageHost):
     STARDOTS_API_BASE = "https://api.stardots.io"
-    STARDOTS_KEY = "your_stardots_key"  # 替换为你的 StarDots Key
-    STARDOTS_SECRET = "your_stardots_secret"  # 替换为你的 StarDots Secret
+    STARDOTS_KEY = ""
+    STARDOTS_SECRET = ""
 
     def _generate_headers(self):
         """

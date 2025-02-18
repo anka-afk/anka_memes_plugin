@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 删除表情包（添加二次确认）
+  // 删除表情包
   async function deleteEmoji(category, emoji) {
     if (!confirm("是否删除该表情包？")) return;
     if (!confirm("请再次确认删除该表情包，此操作不可恢复！")) return;
@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 删除表情包类别（添加二次确认）
+  // 删除表情包类别
   async function deleteCategory(category) {
     if (!confirm("是否删除该分类及其所有表情包？")) return;
     if (!confirm("请再次确认删除该分类，此操作不可恢复！")) return;

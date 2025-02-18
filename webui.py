@@ -49,7 +49,7 @@ def serve_emoji(category, filename):
     # 从 Flask 配置中获取 MEMES_DIR
     MEMES_DIR = app.config.get("MEMES_DIR", None)
     if MEMES_DIR is None:
-        return "MEMES_DIR 未定义", 500  # 或者做其他处理
+        return "MEMES_DIR 未定义", 500
 
     category_path = os.path.join(MEMES_DIR, category)
     if os.path.exists(os.path.join(category_path, filename)):
@@ -71,7 +71,7 @@ def run_server(port):
     app.run(debug=True, host="0.0.0.0", use_reloader=False, port=port)
 
 
-# 用于启动服务器的函数（使用独立进程）
+# 用于启动服务器的函数
 def start_server(config=None):
     global SERVER_LOGIN_KEY
     SERVER_LOGIN_KEY = generate_secret_key(8)
@@ -107,15 +107,9 @@ def shutdown_server(server_process):
     try:
         plugin_config = app.config.get("PLUGIN_CONFIG", {})
         port = plugin_config.get("webui_port", 5000)
-        # 注意：使用 127.0.0.1 而非 0.0.0.0
         requests.post(f"http://127.0.0.1:{port}/shutdown_api")
         server_process.join(timeout=5)  # 等待进程退出
         if server_process.is_alive():
             server_process.terminate()
     except Exception as e:
         print("关闭服务器时出错:", e)
-
-
-if __name__ == "__main__":
-    # 示例：直接启动服务器
-    start_server()

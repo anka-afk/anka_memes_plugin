@@ -20,14 +20,12 @@ def get_public_ip() -> Optional[str]:
             resp = requests.get(
                 ep["url"],
                 timeout=ep["timeout"],
-                # 强制禁用系统代理
                 proxies={"http": None, "https": None},
-                # 规避SNI审查（部分网络会过滤HTTPS SNI）
                 headers={"Host": socket.gethostbyname(ep["url"].split("/")[2])},
             )
             resp.raise_for_status()
             ip = resp.text.strip()
-            if "." in ip or ":" in ip:  # 基础格式校验
+            if "." in ip or ":" in ip:
                 return ip
         except requests.exceptions.RequestException as e:
             print(f"API [{ep['url']}] 失败: {type(e).__name__} - {str(e)}")
@@ -37,6 +35,5 @@ def get_public_ip() -> Optional[str]:
     return None
 
 
-# 生成随机秘钥的函数（用于登录验证）
 def generate_secret_key(length=8):
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
