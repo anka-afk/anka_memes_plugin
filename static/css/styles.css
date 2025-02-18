@@ -1,0 +1,255 @@
+.container {
+  display: flex;
+}
+
+/* 侧边栏 */
+#sidebar {
+  width: 200px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  overflow-y: auto;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 目录标题样式 */
+#sidebar h2 {
+  font-size: 18px;
+  margin-top: 0;
+  color: #495057;
+}
+
+/* 目录列表样式 */
+#sidebar-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 目录项目的样式 */
+#sidebar-list li {
+  margin: 10px 0;
+}
+
+#sidebar-list li a {
+  display: block;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  color: #495057;
+  text-decoration: none;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#sidebar-list li a:hover {
+  background-color: rgba(76, 175, 80, 0.2);
+  transform: scale(1.05);
+  color: #4caf50;
+}
+
+#sidebar-list a {
+  text-decoration: none;
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+#sidebar-list a:hover {
+  color: #4caf50;
+}
+
+/* 主要内容区域 */
+#content {
+  flex: 1;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 页面背景和文字样式 */
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(45deg, #f8f9fa 0%, #e9ecef 100%);
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin: 10px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+#emoji-categories {
+  margin-top: 20px;
+}
+
+.category {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.category h3 {
+  margin: 0 0 10px;
+  color: #495057;
+}
+
+.emoji-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.emoji-item {
+  width: 120px;
+  height: 120px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.emoji-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.delete-btn {
+  display: none;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: rgba(255, 0, 0, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.emoji-item:hover .delete-btn {
+  display: flex;
+}
+
+.delete-btn:hover {
+  background-color: #ff4444;
+  transform: scale(1.1);
+}
+
+/* 上传块样式 */
+.upload-emoji {
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: #fafafa;
+  color: #888;
+  font-size: 12px;
+  position: relative;
+  border-radius: 8px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.upload-emoji.dragover {
+  border-color: #4caf50;
+  background-color: #e8f5e9;
+}
+
+input[type="text"],
+input[type="file"] {
+  padding: 10px;
+  margin: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+#add-category-form {
+  margin: 10px 0;
+}
+
+#add-category-form input {
+  margin-right: 10px;
+}
+
+.login-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.login-title {
+  text-align: center;
+}
+
+.login-input {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.login-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

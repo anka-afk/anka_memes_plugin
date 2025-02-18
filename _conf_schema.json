@@ -1,0 +1,18 @@
+{
+  "image_host": {
+    "description": "选择的图床",
+    "type": "string",
+    "hint": "请输入你的图床名称",
+    "default": "stardots"
+  },
+  "image_host_key": {
+    "description": "图床 key",
+    "type": "string",
+    "hint": "请输入图床的 key"
+  },
+  "image_host_secret": {
+    "description": "图床 secret",
+    "type": "string",
+    "hint": "请输入图床的 secret"
+  }
+}

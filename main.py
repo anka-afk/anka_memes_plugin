@@ -20,13 +20,18 @@ from astrbot.core.message.components import Plain
 from astrbot.api.all import *
 from astrbot.core.message.message_event_result import MessageChain
 
-@register("meme_manager", "anka", "anka - 表情包管理器 - 支持表情包发送及表情包上传", "2.0")
+
+@register(
+    "meme_manager", "anka", "anka - 表情包管理器 - 支持表情包发送及表情包上传", "2.0"
+)
 class MemeSender(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         self.config = config or {}
         self.found_emotions = []  # 存储找到的表情
-        self.upload_states = {}  # 存储上传状态：{user_session: {"category": str, "expire_time": float}}
+        self.upload_states = (
+            {}
+        )  # 存储上传状态：{user_session: {"category": str, "expire_time": float}}
         self.pending_images = {}  # 字典, 存储待发送的图片
         # 获取当前文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -72,45 +77,51 @@ class MemeSender(Star):
     async def upload_meme(self, event: AstrMessageEvent, category: str = None):
         """上传表情包到指定类别"""
         if not category:
-            yield event.plain_result("请指定要上传的表情包类别，格式：/上传表情包 [类别名称]")
+            yield event.plain_result(
+                "请指定要上传的表情包类别，格式：/上传表情包 [类别名称]"
+            )
             return
 
         if category not in self.emotion_map:
-            yield event.plain_result(f"无效的表情包类别：{category}\n使用/查看表情包查看可用类别")
+            yield event.plain_result(
+                f"无效的表情包类别：{category}\n使用/查看表情包查看可用类别"
+            )
             return
 
         user_key = f"{event.session_id}_{event.get_sender_id()}"
         self.upload_states[user_key] = {
             "category": category,
-            "expire_time": time.time() + 30
+            "expire_time": time.time() + 30,
         }
-        yield event.plain_result(f"请于30秒内发送要添加到【{category}】类别的图片（支持多图）")
+        yield event.plain_result(
+            f"请于30秒内发送要添加到【{category}】类别的图片（支持多图）"
+        )
 
     @filter.event_message_type(EventMessageType.ALL)
     async def handle_upload_image(self, event: AstrMessageEvent):
         """处理用户上传的图片"""
         user_key = f"{event.session_id}_{event.get_sender_id()}"
         upload_state = self.upload_states.get(user_key)
-        
+
         if not upload_state or time.time() > upload_state["expire_time"]:
             if user_key in self.upload_states:
                 del self.upload_states[user_key]
             return
-        
+
         images = [c for c in event.message_obj.message if isinstance(c, Image)]
-        
+
         if not images:
             yield event.plain_result("请发送图片文件进行上传")
             return
-        
+
         category_cn = upload_state["category"]
         category_en = self.emotion_map[category_cn]
         save_dir = os.path.join(self.meme_path, category_en)
-        
+
         try:
             os.makedirs(save_dir, exist_ok=True)
             saved_files = []
-            
+
             # 创建忽略 SSL 验证的上下文
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
@@ -118,22 +129,26 @@ class MemeSender(Star):
 
             for idx, img in enumerate(images, 1):
                 timestamp = int(time.time())
-                
+
                 try:
                     # 特殊处理腾讯多媒体域名
                     if "multimedia.nt.qq.com.cn" in img.url:
                         # 强制使用 HTTP 协议
                         insecure_url = img.url.replace("https://", "http://", 1)
-                        self.logger.warning(f"检测到腾讯多媒体域名，使用 HTTP 协议下载: {insecure_url}")
+                        self.logger.warning(
+                            f"检测到腾讯多媒体域名，使用 HTTP 协议下载: {insecure_url}"
+                        )
                         async with aiohttp.ClientSession() as session:
                             async with session.get(insecure_url) as resp:
                                 content = await resp.read()
                     else:
                         # 使用自定义 SSL 上下文
-                        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+                        async with aiohttp.ClientSession(
+                            connector=aiohttp.TCPConnector(ssl=ssl_context)
+                        ) as session:
                             async with session.get(img.url) as resp:
                                 content = await resp.read()
-                    
+
                     file_type = imghdr.what(None, h=content)
                     if not file_type:
                         try:
@@ -149,28 +164,30 @@ class MemeSender(Star):
                         "jpeg": ".jpg",
                         "png": ".png",
                         "gif": ".gif",
-                        "webp": ".webp"
+                        "webp": ".webp",
                     }
                     ext = ext_mapping.get(file_type, ".bin")
-                    
+
                     # 生成带扩展名的文件名
                     filename = f"{timestamp}_{idx}{ext}"
                     save_path = os.path.join(save_dir, filename)
-                    
+
                     with open(save_path, "wb") as f:
                         f.write(content)
                     saved_files.append(filename)
-                    
+
                 except Exception as e:
                     self.logger.error(f"下载图片失败: {str(e)}")
                     yield event.plain_result(f"文件 {img.url} 下载失败: {str(e)}")
                     continue
 
             del self.upload_states[user_key]
-            result_msg = [Plain(f"成功添加 {len(saved_files)} 张图片到【{category_cn}】类别！")]
+            result_msg = [
+                Plain(f"成功添加 {len(saved_files)} 张图片到【{category_cn}】类别！")
+            ]
             yield event.chain_result(result_msg)
             await self.reload_emotions()
-            
+
         except Exception as e:
             self.logger.error(f"保存图片失败: {str(e)}")
             yield event.plain_result(f"保存失败：{str(e)}")
@@ -179,7 +196,7 @@ class MemeSender(Star):
         """动态加载表情配置"""
         config_path = os.path.join(self.meme_path, "emotions.json")
         if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 self.emotion_map.update(json.load(f))
 
     def _check_meme_directories(self):
@@ -195,7 +212,11 @@ class MemeSender(Star):
                 self.logger.error(f"表情目录不存在: {emotion_path}")
                 continue
 
-            memes = [f for f in os.listdir(emotion_path) if f.endswith(('.jpg', '.png', '.gif'))]
+            memes = [
+                f
+                for f in os.listdir(emotion_path)
+                if f.endswith((".jpg", ".png", ".gif"))
+            ]
             if not memes:
                 self.logger.error(f"表情目录为空: {emotion_path}")
             else:
@@ -212,9 +233,9 @@ class MemeSender(Star):
 
         # 定义表情正则模式
         patterns = [
-            r'\[([^\]]+)\]',  # [生气]
-            r'\(([^)]+)\)',   # (生气)
-            r'（([^）]+)）'    # （生气）
+            r"\[([^\]]+)\]",  # [生气]
+            r"\(([^)]+)\)",  # (生气)
+            r"（([^）]+)）",  # （生气）
         ]
 
         clean_text = text
@@ -226,10 +247,12 @@ class MemeSender(Star):
                 emotion = match.group(1)
                 if emotion in self.emotion_map:
                     self.found_emotions.append(emotion)
-                    clean_text = clean_text.replace(match.group(0), '')
+                    clean_text = clean_text.replace(match.group(0), "")
 
         # 限制表情包数量
-        self.found_emotions = list(dict.fromkeys(self.found_emotions))[:2]  # 去重并限制最多2个
+        self.found_emotions = list(dict.fromkeys(self.found_emotions))[
+            :2
+        ]  # 去重并限制最多2个
 
         if self.found_emotions:
             # 更新回复文本(移除表情标记)
@@ -248,7 +271,7 @@ class MemeSender(Star):
         try:
             chains = []
             original_chain = result.chain
-            
+
             if original_chain:
                 if isinstance(original_chain, str):
                     chains.append(Plain(original_chain))
@@ -256,17 +279,20 @@ class MemeSender(Star):
                     chains.extend([c for c in original_chain if isinstance(c, Plain)])
                 elif isinstance(original_chain, list):
                     chains.extend([c for c in original_chain if isinstance(c, Plain)])
-            
-            text_result = event.make_result().set_result_content_type(ResultContentType.LLM_RESULT)
+
+            text_result = event.make_result().set_result_content_type(
+                ResultContentType.LLM_RESULT
+            )
             for component in chains:
                 if isinstance(component, Plain):
                     text_result = text_result.message(component.text)
-            
+
             event.set_result(text_result)
 
         except Exception as e:
             self.logger.error(f"处理文本失败: {str(e)}")
             import traceback
+
             self.logger.error(traceback.format_exc())
 
     @filter.after_message_sent()
@@ -285,22 +311,27 @@ class MemeSender(Star):
                 if not os.path.exists(emotion_path):
                     continue
 
-                memes = [f for f in os.listdir(emotion_path) if f.endswith(('.jpg', '.png', '.gif'))]
+                memes = [
+                    f
+                    for f in os.listdir(emotion_path)
+                    if f.endswith((".jpg", ".png", ".gif"))
+                ]
                 if not memes:
                     continue
 
                 meme = random.choice(memes)
                 meme_file = os.path.join(emotion_path, meme)
-                
+
                 await self.context.send_message(
                     event.unified_msg_origin,
-                    MessageChain([Image.fromFileSystem(meme_file)])
+                    MessageChain([Image.fromFileSystem(meme_file)]),
                 )
             self.found_emotions = []
-            
+
         except Exception as e:
             self.logger.error(f"发送表情图片失败: {str(e)}")
             import traceback
+
             self.logger.error(traceback.format_exc())
         finally:
             self.found_emotions = []

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>表情包管理</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+  </head>
+  <body>
+    <h1>表情包管理</h1>
+    <div class="container">
+      <div id="sidebar">
+        <h2>目录</h2>
+        <ul id="sidebar-list"></ul>
+      </div>
+
+      <div id="content">
+        <div id="emoji-categories"></div>
+        <button id="add-category-btn">添加分类</button>
+        <div id="add-category-form" style="display: none">
+          <input
+            type="text"
+            id="new-category-chinese"
+            placeholder="输入中文名称"
+          />
+          <input
+            type="text"
+            id="new-category-english"
+            placeholder="输入英文名称"
+          />
+          <button id="save-category-btn">保存分类</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>

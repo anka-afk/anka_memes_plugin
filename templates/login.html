@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>登录验证</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+  </head>
+  <body>
+    <div class="login-container">
+      <h2 class="login-title">请输入秘钥以进入WebUI</h2>
+      <form method="post" class="login-box">
+        <input
+          class="login-input"
+          type="text"
+          name="key"
+          placeholder="秘钥"
+          required
+        />
+        <button type="submit">提交</button>
+      </form>
+      {% if error %}
+      <p class="error">{{ error }}</p>
+      {% endif %}
+    </div>
+  </body>
+</html>
