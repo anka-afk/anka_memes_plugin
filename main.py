@@ -30,7 +30,7 @@ class MemeSender(Star):
         super().__init__(context)
 
         # 加载配置
-        self.config = config
+        self.config = config or {}
         self.emotion_map = self.config.get(
             "emotion_map",
             {
@@ -61,21 +61,25 @@ class MemeSender(Star):
         self.image_host_key = self.config.get("image_host_key", "")
         self.image_host_secret = self.config.get("image_host_secret", "")
 
-        self.config = config or {}
         self.found_emotions = []  # 存储找到的表情
         self.upload_states = (
             {}
         )  # 存储上传状态：{user_session: {"category": str, "expire_time": float}}
-        self.pending_images = {}  # 字典, 存储待发送的图片
+        self.pending_images = {}  # 存储待发送的图片
+
         # 获取当前文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.meme_path = os.path.join(current_dir, "memes")
+        self.meme_path = os.path.join(
+            current_dir, self.config.get("memes_path", "memes")
+        )
+
         # 设置日志
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-
         # 检查表情包目录
         self._check_meme_directories()
+        # 用于保存服务器进程对象
+        self.server_process = None
 
     @filter.command("启动服务器")
     async def start_server_command(self, event: AstrMessageEvent):
@@ -83,12 +87,16 @@ class MemeSender(Star):
         启动服务器的指令，返回访问地址和当前秘钥
         """
         yield event.plain_result("服务器启动中，请稍候……")
-        # 传入 self.config 到 webui 中
-        key = start_server(self.config)  # 启动服务器并获取秘钥
+        # 传入配置到 webui 中，启动服务器并获取秘钥和进程对象
+        secret_key, process = start_server(self.config)
+        self.server_process = process
+
+        # 根据配置获取端口号，默认 5000
+        port = self.config.get("webui_port", 5000)
         public_ip = get_public_ip()
-        webui_url = f"http://{public_ip}:5000/"  # 使用公网 IP
+        webui_url = f"http://{public_ip}:{port}/"  # 使用公网 IP 构造访问地址
         yield event.plain_result(
-            f"服务器已启动！请访问 {webui_url} ，登录秘钥为：{key}"
+            f"服务器已启动！请访问 {webui_url} ，登录秘钥为：{secret_key}"
         )
 
     @filter.command("关闭服务器")
@@ -96,8 +104,13 @@ class MemeSender(Star):
         """
         关闭服务器的指令
         """
+        if not self.server_process:
+            yield event.plain_result("服务器未启动或已关闭。")
+            return
+
         yield event.plain_result("正在关闭服务器……")
-        shutdown_server()
+        shutdown_server(self.server_process)
+        self.server_process = None
         yield event.plain_result("服务器已关闭！")
 
     @filter.command("查看表情包")
@@ -166,7 +179,6 @@ class MemeSender(Star):
                 try:
                     # 特殊处理腾讯多媒体域名
                     if "multimedia.nt.qq.com.cn" in img.url:
-                        # 强制使用 HTTP 协议
                         insecure_url = img.url.replace("https://", "http://", 1)
                         self.logger.warning(
                             f"检测到腾讯多媒体域名，使用 HTTP 协议下载: {insecure_url}"
@@ -175,7 +187,6 @@ class MemeSender(Star):
                             async with session.get(insecure_url) as resp:
                                 content = await resp.read()
                     else:
-                        # 使用自定义 SSL 上下文
                         async with aiohttp.ClientSession(
                             connector=aiohttp.TCPConnector(ssl=ssl_context)
                         ) as session:
@@ -192,7 +203,6 @@ class MemeSender(Star):
                             self.logger.error(f"图片格式检测失败: {str(e)}")
                             file_type = "unknown"
 
-                    # 扩展名映射表
                     ext_mapping = {
                         "jpeg": ".jpg",
                         "png": ".png",
@@ -200,8 +210,6 @@ class MemeSender(Star):
                         "webp": ".webp",
                     }
                     ext = ext_mapping.get(file_type, ".bin")
-
-                    # 生成带扩展名的文件名
                     filename = f"{timestamp}_{idx}{ext}"
                     save_path = os.path.join(save_dir, filename)
 
@@ -282,13 +290,10 @@ class MemeSender(Star):
                     self.found_emotions.append(emotion)
                     clean_text = clean_text.replace(match.group(0), "")
 
-        # 限制表情包数量
-        self.found_emotions = list(dict.fromkeys(self.found_emotions))[
-            :2
-        ]  # 去重并限制最多2个
+        # 去重并限制最多2个表情
+        self.found_emotions = list(dict.fromkeys(self.found_emotions))[:2]
 
         if self.found_emotions:
-            # 更新回复文本(移除表情标记)
             response.completion_text = clean_text.strip()
 
     @filter.on_decorating_result()

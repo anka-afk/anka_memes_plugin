@@ -1,15 +1,40 @@
 import requests
 import random
 import string
+import socket
+from typing import Optional
 
 
-def get_public_ip():
-    try:
-        ip = requests.get("https://api.ipify.org").text.strip()
-        return ip
-    except Exception as e:
-        print("获取公网 IP 失败:", e)
-        return "0.0.0.0"
+def get_public_ip() -> Optional[str]:
+
+    endpoints = [
+        {"url": "https://api.ipify.org", "timeout": 3},
+        {"url": "https://checkip.amazonaws.com", "timeout": 3},
+        {"url": "https://ident.me", "timeout": 3},
+        {"url": "http://icanhazip.com", "timeout": 3},
+        {"url": "https://ifconfig.me/ip", "timeout": 5},
+    ]
+
+    for ep in endpoints:
+        try:
+            resp = requests.get(
+                ep["url"],
+                timeout=ep["timeout"],
+                # 强制禁用系统代理
+                proxies={"http": None, "https": None},
+                # 规避SNI审查（部分网络会过滤HTTPS SNI）
+                headers={"Host": socket.gethostbyname(ep["url"].split("/")[2])},
+            )
+            resp.raise_for_status()
+            ip = resp.text.strip()
+            if "." in ip or ":" in ip:  # 基础格式校验
+                return ip
+        except requests.exceptions.RequestException as e:
+            print(f"API [{ep['url']}] 失败: {type(e).__name__} - {str(e)}")
+            continue
+
+    print("所有API端点均不可用")
+    return None
 
 
 # 生成随机秘钥的函数（用于登录验证）

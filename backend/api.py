@@ -5,6 +5,7 @@ from .models import (
     add_emoji_to_category,
     delete_emoji_from_category,
     update_emoji_in_category,
+    get_base_dir,
 )
 import os
 import shutil
@@ -122,9 +123,9 @@ def add_category():
     current_app.config["PLUGIN_CONFIG"] = plugin_config
 
     # 创建对应的表情包目录（以英文名称作为文件夹名）
-    from .models import BASE_DIR
+    from .models import get_base_dir
 
-    category_path = os.path.join(BASE_DIR, english)
+    category_path = os.path.join(get_base_dir(), english)
     if not os.path.exists(category_path):
         os.makedirs(category_path)
 
@@ -157,9 +158,9 @@ def delete_category():
     current_app.config["PLUGIN_CONFIG"] = plugin_config
 
     # 删除对应的表情包目录（以英文名称作为文件夹名）
-    from .models import BASE_DIR
+    from .models import get_base_dir
 
-    category_path = os.path.join(BASE_DIR, category)
+    category_path = os.path.join(get_base_dir(), category)
     if os.path.exists(category_path):
         try:
             shutil.rmtree(category_path)
@@ -175,7 +176,7 @@ def delete_category():
 # 同步表情包目录到图床
 @api.route("/sync_memes", methods=["POST"])
 def sync_memes():
-    memes_dir = "./memes"  # 设定表情包的本地目录
+    memes_dir = get_base_dir()
     try:
         result = image_host.sync_memes_to_host(memes_dir)
         return jsonify(result)

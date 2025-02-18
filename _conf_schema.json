@@ -28,6 +28,13 @@
     },
     "default": {}
   },
+  "memes_path": {
+    "description": "表情包存储路径",
+    "type": "string",
+    "hint": "请输入表情包存储路径",
+    "default": "memes",
+    "invisible": true
+  },
   "image_host": {
     "description": "选择的图床",
     "type": "string",

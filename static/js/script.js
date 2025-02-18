@@ -83,7 +83,9 @@ document.addEventListener("DOMContentLoaded", () => {
       data[category].forEach((emoji) => {
         const emojiItem = document.createElement("div");
         emojiItem.classList.add("emoji-item");
-        emojiItem.style.backgroundImage = `url('/memes/${category}/${emoji}')`;
+
+        // 使用懒加载的背景图片（设置 data-bg 属性用于懒加载）
+        emojiItem.setAttribute("data-bg", `/memes/${category}/${emoji}`);
 
         // 删除按钮（右上角）
         const deleteBtn = document.createElement("button");
@@ -138,6 +140,28 @@ document.addEventListener("DOMContentLoaded", () => {
       categoryDiv.appendChild(emojiListDiv);
       categoriesContainer.appendChild(categoryDiv);
     }
+
+    // 懒加载背景图片
+    const lazyBackgrounds = document.querySelectorAll(".emoji-item");
+
+    const observer = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const emojiItem = entry.target;
+            const bgUrl = emojiItem.getAttribute("data-bg");
+            emojiItem.style.backgroundImage = `url('${bgUrl}')`; // 加载背景图片
+            emojiItem.removeAttribute("data-bg"); // 移除临时属性
+            observer.unobserve(emojiItem); // 停止观察
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    lazyBackgrounds.forEach((item) => {
+      observer.observe(item); // 观察每个表情包
+    });
   }
 
   // 更新侧边栏目录，根据分类数据生成跳转链接
