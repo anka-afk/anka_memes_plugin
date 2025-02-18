@@ -4,7 +4,7 @@ import random
 import time
 import string
 import os
-from image_host import ImageHost
+from .image_host import ImageHost
 
 
 class StarDotsImageHost(ImageHost):

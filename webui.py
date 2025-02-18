@@ -1,7 +1,7 @@
 from asyncio import wait
 import os
-import random
-import string
+import threading
+import requests
 from flask import (
     Flask,
     render_template,
@@ -11,19 +11,15 @@ from flask import (
     url_for,
     session,
 )
-from backend.api import api
+from .backend.api import api
+from .utils import generate_secret_key
 
 app = Flask(__name__)
 
 # 注册API蓝图
 app.register_blueprint(api, url_prefix="/api")
 
-MEMES_DIR = "./memes"
-
-
-# 生成随机秘钥的函数（用于登录验证）
-def generate_secret_key(length=8):
-    return "".join(random.choices(string.ascii_letters + string.digits, k=length))
+MEMES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "memes")
 
 
 # 全局变量，用于保存当前的登录秘钥
@@ -62,25 +58,51 @@ def serve_emoji(category, filename):
     if os.path.exists(os.path.join(category_path, filename)):
         return send_from_directory(category_path, filename)
     else:
-        return "File not found", 404
+        return "File not found" + os.path.join(category_path, filename), 404
+
+
+@app.route("/shutdown_api", methods=["POST"])
+def shutdown_api():
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func is None:
+        raise RuntimeError("无法关闭服务器：不是在 Werkzeug 环境中运行？")
+    func()
+    return "Server shutting down..."
 
 
 # 封装启动服务器的函数，每次启动时生成新秘钥
-def start_server():
+def start_server(config=None):
     global SERVER_LOGIN_KEY
     SERVER_LOGIN_KEY = generate_secret_key(8)
     print("当前秘钥为:", SERVER_LOGIN_KEY)
     # 设置 session 加密秘钥（每次启动时随机生成）
     app.secret_key = os.urandom(16)
-    app.run(debug=True)
+    # 如果传入了配置，则保存到 Flask app 的配置中
+    if config is not None:
+        app.config["PLUGIN_CONFIG"] = config
+    # 读取端口号设置，默认为 5000
+    port = 5000
+    if config is not None:
+        port = config.get("webui_port", 5000)
+    # 启动服务器，使用配置中指定的端口号
+    threading.Thread(
+        target=lambda: app.run(
+            debug=True, host="0.0.0.0", use_reloader=False, port=port
+        )
+    ).start()
+    return SERVER_LOGIN_KEY
 
 
-# 封装关闭服务器的函数（需要在请求上下文中调用）
+# 封装关闭服务器的函数
 def shutdown_server():
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("无法关闭服务器：不是在 Werkzeug 环境中运行？")
-    func()
+    try:
+        port = 5000
+        plugin_config = app.config.get("PLUGIN_CONFIG", {})
+        port = plugin_config.get("webui_port", 5000)
+        # 服务器运行在指定的端口上
+        requests.post(f"http://0.0.0.0:{port}/shutdown_api")
+    except Exception as e:
+        print("关闭服务器时出错:", e)
 
 
 if __name__ == "__main__":

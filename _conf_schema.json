@@ -1,4 +1,33 @@
 {
+  "emotion_map": {
+    "description": "表情映射",
+    "type": "object",
+    "invisible": true,
+    "items": {
+      "生气": { "type": "string", "default": "angry" },
+      "开心": { "type": "string", "default": "happy" },
+      "悲伤": { "type": "string", "default": "sad" },
+      "惊讶": { "type": "string", "default": "surprised" },
+      "疑惑": { "type": "string", "default": "confused" },
+      "色色": { "type": "string", "default": "color" },
+      "色": { "type": "string", "default": "color" },
+      "死机": { "type": "string", "default": "cpu" },
+      "笨蛋": { "type": "string", "default": "fool" },
+      "给钱": { "type": "string", "default": "givemoney" },
+      "喜欢": { "type": "string", "default": "like" },
+      "看": { "type": "string", "default": "see" },
+      "害羞": { "type": "string", "default": "shy" },
+      "下班": { "type": "string", "default": "work" },
+      "剪刀": { "type": "string", "default": "scissors" },
+      "不回我": { "type": "string", "default": "reply" },
+      "喵": { "type": "string", "default": "meow" },
+      "八嘎": { "type": "string", "default": "baka" },
+      "早": { "type": "string", "default": "morning" },
+      "睡觉": { "type": "string", "default": "sleep" },
+      "唉": { "type": "string", "default": "sigh" }
+    },
+    "default": {}
+  },
   "image_host": {
     "description": "选择的图床",
     "type": "string",
@@ -14,5 +43,10 @@
     "description": "图床 secret",
     "type": "string",
     "hint": "请输入图床的 secret"
+  },
+  "webui_port": {
+    "description": "Web UI 端口号",
+    "type": "int",
+    "default": 5000
   }
 }

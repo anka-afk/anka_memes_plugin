@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from .models import (
     scan_emoji_folder,
     get_emoji_by_category,
@@ -6,14 +6,12 @@ from .models import (
     delete_emoji_from_category,
     update_emoji_in_category,
 )
-import json
 import os
-from image_host.stardots_host import StarDotsImageHost
+import shutil
+from ..image_host.stardots_host import StarDotsImageHost
 
 # 创建图床对象，这里你可以动态选择使用哪个图床
-# 比如根据配置文件或请求参数决定使用 StarDots 还是其他图床
 image_host = StarDotsImageHost()  # 选择 StarDots 图床实现
-# image_host = OtherImageHost()  # 或者选择其他图床实现
 
 api = Blueprint("api", __name__)
 
@@ -98,14 +96,14 @@ def update_emoji():
 @api.route("/emotions", methods=["GET"])
 def get_emotions():
     try:
-        with open("emotions.json", "r", encoding="utf-8") as f:
-            emotions = json.load(f)
-        return jsonify(emotions)
+        plugin_config = current_app.config.get("PLUGIN_CONFIG", {})
+        emotion_map = plugin_config.get("emotion_map", {})
+        return jsonify(emotion_map)
     except Exception as e:
-        return jsonify({"message": f"无法读取 emotions.json: {str(e)}"}), 500
+        return jsonify({"message": f"无法读取 emotion_map: {str(e)}"}), 500
 
 
-# 添加分类：输入中文键和英文值，同时更新 emotions.json 并创建对应目录
+# 添加分类：输入中文键和英文值，同时更新配置中 PLUGIN_CONFIG 的 emotion_map 并创建对应目录
 @api.route("/category/add", methods=["POST"])
 def add_category():
     data = request.get_json()
@@ -114,24 +112,14 @@ def add_category():
     if not chinese or not english:
         return jsonify({"message": "中文名称和英文名称均为必填项"}), 400
 
-    # 读取现有 emotions.json（如果存在）
-    try:
-        if os.path.exists("emotions.json"):
-            with open("emotions.json", "r", encoding="utf-8") as f:
-                emotions = json.load(f)
-        else:
-            emotions = {}
-    except Exception as e:
-        emotions = {}
+    # 从 Flask 应用配置中获取 PLUGIN_CONFIG 下的 emotion_map
+    plugin_config = current_app.config.get("PLUGIN_CONFIG", {})
+    emotion_map = plugin_config.get("emotion_map", {})
 
-    # 添加新的分类映射
-    emotions[chinese] = english
-
-    try:
-        with open("emotions.json", "w", encoding="utf-8") as f:
-            json.dump(emotions, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        return jsonify({"message": f"更新 emotions.json 失败: {str(e)}"}), 500
+    # 添加或更新新的分类映射
+    emotion_map[chinese] = english
+    plugin_config["emotion_map"] = emotion_map
+    current_app.config["PLUGIN_CONFIG"] = plugin_config
 
     # 创建对应的表情包目录（以英文名称作为文件夹名）
     from .models import BASE_DIR
@@ -141,6 +129,44 @@ def add_category():
         os.makedirs(category_path)
 
     return jsonify({"message": "Category added successfully"}), 201
+
+
+# 删除分类：删除配置中 emotion_map 的映射以及对应的表情包目录
+@api.route("/category/delete", methods=["POST"])
+def delete_category():
+    data = request.get_json()
+    category = data.get("category")  # 此处 category 为英文名称
+    if not category:
+        return jsonify({"message": "Category is required"}), 400
+
+    # 从 Flask 应用配置中获取 PLUGIN_CONFIG 下的 emotion_map
+    plugin_config = current_app.config.get("PLUGIN_CONFIG", {})
+    emotion_map = plugin_config.get("emotion_map", {})
+
+    # 移除映射中对应的条目（如果存在）
+    removed = False
+    for key in list(emotion_map.keys()):
+        if emotion_map[key] == category:
+            del emotion_map[key]
+            removed = True
+
+    if not removed:
+        return jsonify({"message": "Category not found in configuration"}), 404
+
+    plugin_config["emotion_map"] = emotion_map
+    current_app.config["PLUGIN_CONFIG"] = plugin_config
+
+    # 删除对应的表情包目录（以英文名称作为文件夹名）
+    from .models import BASE_DIR
+
+    category_path = os.path.join(BASE_DIR, category)
+    if os.path.exists(category_path):
+        try:
+            shutil.rmtree(category_path)
+        except Exception as e:
+            return jsonify({"message": f"删除类别目录失败: {str(e)}"}), 500
+
+    return jsonify({"message": "Category deleted successfully"}), 200
 
 
 # --- 图床相关 API ---

@@ -1,8 +1,8 @@
 import os
-import shutil
 from werkzeug.utils import secure_filename
 
-BASE_DIR = "./memes"
+plugin_dir = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.join(os.path.dirname(plugin_dir), "memes")
 
 
 # 扫描所有类别和表情包

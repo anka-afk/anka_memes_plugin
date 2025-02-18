@@ -1,4 +1,3 @@
-import asyncio
 import re
 import os
 import io
@@ -19,6 +18,8 @@ from astrbot.api.event import ResultContentType
 from astrbot.core.message.components import Plain
 from astrbot.api.all import *
 from astrbot.core.message.message_event_result import MessageChain
+from .webui import start_server, shutdown_server
+from .utils import get_public_ip
 
 
 @register(
@@ -27,6 +28,39 @@ from astrbot.core.message.message_event_result import MessageChain
 class MemeSender(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
+
+        # 加载配置
+        self.config = config
+        self.emotion_map = self.config.get(
+            "emotion_map",
+            {
+                "生气": "angry",
+                "开心": "happy",
+                "悲伤": "sad",
+                "惊讶": "surprised",
+                "疑惑": "confused",
+                "色色": "color",
+                "色": "color",
+                "死机": "cpu",
+                "笨蛋": "fool",
+                "给钱": "givemoney",
+                "喜欢": "like",
+                "看": "see",
+                "害羞": "shy",
+                "下班": "work",
+                "剪刀": "scissors",
+                "不回我": "reply",
+                "喵": "meow",
+                "八嘎": "baka",
+                "早": "morning",
+                "睡觉": "sleep",
+                "唉": "sigh",
+            },
+        )
+        self.image_host = self.config.get("image_host", "stardots")
+        self.image_host_key = self.config.get("image_host_key", "")
+        self.image_host_secret = self.config.get("image_host_secret", "")
+
         self.config = config or {}
         self.found_emotions = []  # 存储找到的表情
         self.upload_states = (
@@ -36,36 +70,35 @@ class MemeSender(Star):
         # 获取当前文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.meme_path = os.path.join(current_dir, "memes")
-
-        self.emotion_map = {
-            "生气": "angry",
-            "开心": "happy",
-            "悲伤": "sad",
-            "惊讶": "surprised",
-            "疑惑": "confused",
-            "色色": "color",
-            "色": "color",
-            "死机": "cpu",
-            "笨蛋": "fool",
-            "给钱": "givemoney",
-            "喜欢": "like",
-            "看": "see",
-            "害羞": "shy",
-            "下班": "work",
-            "剪刀": "scissors",
-            "不回我": "reply",
-            "喵": "meow",
-            "八嘎": "baka",
-            "早": "morning",
-            "睡觉": "sleep",
-            "唉": "sigh",
-        }
         # 设置日志
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
 
         # 检查表情包目录
         self._check_meme_directories()
+
+    @filter.command("启动服务器")
+    async def start_server_command(self, event: AstrMessageEvent):
+        """
+        启动服务器的指令，返回访问地址和当前秘钥
+        """
+        yield event.plain_result("服务器启动中，请稍候……")
+        # 传入 self.config 到 webui 中
+        key = start_server(self.config)  # 启动服务器并获取秘钥
+        public_ip = get_public_ip()
+        webui_url = f"http://{public_ip}:5000/"  # 使用公网 IP
+        yield event.plain_result(
+            f"服务器已启动！请访问 {webui_url} ，登录秘钥为：{key}"
+        )
+
+    @filter.command("关闭服务器")
+    async def stop_server(self, event: AstrMessageEvent):
+        """
+        关闭服务器的指令
+        """
+        yield event.plain_result("正在关闭服务器……")
+        shutdown_server()
+        yield event.plain_result("服务器已关闭！")
 
     @filter.command("查看表情包")
     async def list_emotions(self, event: AstrMessageEvent):
